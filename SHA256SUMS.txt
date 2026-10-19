@@ -1,5 +1,5 @@
-70b03abdea1cdda9994fc96494e1a2c0d6e1ce7fb606409df12272d244e59995  memory-warehouse-1.1.0-full.part1.rar
-72e0435ff1c2d74042057fd70f31e0766567453b4524cb83fe8a7fb1b410839f  memory-warehouse-1.1.0-full.part2.rar
-1627476e79ff4d520c32d88eecc8b41995526ec7546cdd76ec33eaa35235482f  memory-warehouse-1.1.0-full.part3.rar
-80847f097af3bf6b4833fca7d86e8fa9e6bb1004ebf4f50358f0a1d529bc80f1  memory-warehouse-1.1.0-lite.zip
-06839138cb293e4e94cacd1e2b9213c214200cde7106162208451f62c90cbd7c  README.md
+1d753bdf2c8f32a29a8751c2cbf794e9e4d5f56166d94d41f4f82b9afc565c31  memory-warehouse-1.2.0-lite.zip
+733345e2324e59bd7958adf7f464709b8dcb6e1bab70e4dcbb361632cdbb6f30  memory-warehouse-1.2.0-full.part1.rar
+a43f004e36c44f0f592a99e7dbdec57584486697f22fd3bfa8bcd427d7c50208  memory-warehouse-1.2.0-full.part2.rar
+cbb7ada3779784f85e54f37b50e97bc52d432929daa610e58db30b07feb0bec0  memory-warehouse-1.2.0-full.part3.rar
+de228da373b0636417eebd230904319e2408d47d5855f5936514b45ed7b8685b  README.md

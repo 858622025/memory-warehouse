@@ -1,4 +1,4 @@
-# Memory Warehouse（v1.1.0）
+# Memory Warehouse（v1.2.0）
 
 把 agent 的对话历史增量落盘到本地 SQLite。上下文被压缩（compact）后，仍然能按关键词或语义找回压缩前说过的话、跑过的命令、改过的文件和当时的结论。
 
@@ -10,7 +10,8 @@
 - **V2 语义摘要**：每轮生成 `summary` / `decisions` / `open_questions` / `must_keep`（可选，需要 Anthropic 兼容 API）。
 - **V3 向量检索**：本地中文 embedding（`bge-small-zh-v1.5`，512 维），按句切块，和 BM25 用 RRF 融合。
 - **Hooks**：SessionStart / Stop / PreCompact / SessionEnd 自动落盘、压缩前快照、启动注入摘要。
-- **CLI + MCP**：`recall` / `show` / `timeline` / `remember` / `checkpoint` / `summarize` / `embed` / `stats`。
+- **Watcher**：不依赖 hooks 的轮询采集；MCP server 默认在进程内启动，也可以 `mw.py watch` 独立运行。
+- **CLI + MCP**：`recall` / `show` / `timeline` / `remember` / `checkpoint` / `summarize` / `embed` / `sync` / `watch_status` / `ingest` / `stats`。
 - **可选 Skill**：让 agent 在"还记得吗 / 上次 / 之前"时主动检索。
 
 ## 环境要求
@@ -114,6 +115,9 @@ python mw.py checkpoint --summary "当前进度" --must-keep "路径, 命令, �
 
 python mw.py summarize --limit 20              # 补历史 LLM 摘要
 python mw.py embed                             # 增量向量索引
+python mw.py watch --once                      # transcript watcher 扫一次
+python mw.py watch --interval 5                # 常驻轮询（无 hooks 的 agent）
+python mw.py watch-status                      # watcher 心跳
 python mw.py vacuum                            # 压缩数据库文件
 ```
 
@@ -135,6 +139,36 @@ transcript 来源：
 - Claude Code：`~/.claude/projects/**/*.jsonl`
 
 可在 `config.json` 的 `transcript_roots` 中增减。
+
+## 没有 hooks 的 agent：watcher
+
+hooks 只适用于支持 Claude Code 事件模型的客户端。其他 agent 可以用 watcher：
+
+```bash
+python mw.py watch --once          # 扫一次
+python mw.py watch --interval 5    # 常驻轮询
+python mw.py watch-status          # 最近一次心跳
+```
+
+`python mw.py mcp` 默认会在 MCP server 进程内启动 watcher 线程；不需要时用 `--no-watch` 关闭。配置在 `config.json` 的 `watcher` 块：
+
+```json
+"watcher": {
+  "enabled": true,
+  "interval": 5,
+  "auto_embed": true,
+  "auto_summarize": false,
+  "summarize_after_seconds": 90,
+  "max_summaries_per_poll": 2,
+  "embed_min_interval": 30
+}
+```
+
+- 只适用于日志写在本地、且格式能被解析的 agent；其他格式需要 adapter。
+- transcript 重写（如压缩）时，watcher 用导入偏移 + 首尾指纹检测；旧事件保留，新内容继续导入。
+- 轮询间隔内“写完立刻被重写”仍可能丢一小段；支持 PreCompact 的客户端优先用 hook。
+
+MCP 侧还提供 `sync`（一次性扫描）、`watch_status`、`ingest`（导入指定文件）工具，以及 `memory://brief`、`memory://stats` resources。支持 resources 的客户端可以在会话开始自动读取摘要。
 
 ## 数据与隐私
 
