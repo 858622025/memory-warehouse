@@ -1,4 +1,4 @@
-# Memory Warehouse（v1.2.0）
+# Memory Warehouse（v1.3.0）
 
 把 agent 的对话历史增量落盘到本地 SQLite。上下文被压缩（compact）后，仍然能按关键词或语义找回压缩前说过的话、跑过的命令、改过的文件和当时的结论。
 
@@ -11,7 +11,8 @@
 - **V3 向量检索**：本地中文 embedding（`bge-small-zh-v1.5`，512 维），按句切块，和 BM25 用 RRF 融合。
 - **Hooks**：SessionStart / Stop / PreCompact / SessionEnd 自动落盘、压缩前快照、启动注入摘要。
 - **Watcher**：不依赖 hooks 的轮询采集；MCP server 默认在进程内启动，也可以 `mw.py watch` 独立运行。
-- **CLI + MCP**：`recall` / `show` / `timeline` / `remember` / `checkpoint` / `summarize` / `embed` / `sync` / `watch_status` / `ingest` / `stats`。
+- **按 agent 隔离**：默认只检索/写入当前 agent；hooks 自动解析归属，MCP 用 `--agent-id` 显式绑定。
+- **CLI + MCP**：`recall` / `show` / `timeline` / `remember` / `checkpoint` / `summarize` / `embed` / `sync` / `watch_status` / `ingest` / `stats` / `agent`。
 - **可选 Skill**：让 agent 在"还记得吗 / 上次 / 之前"时主动检索。
 
 ## 环境要求
@@ -119,6 +120,11 @@ python mw.py watch --once                      # transcript watcher 扫一次
 python mw.py watch --interval 5                # 常驻轮询（无 hooks 的 agent）
 python mw.py watch-status                      # watcher 心跳
 python mw.py vacuum                            # 压缩数据库文件
+
+python mw.py agent current                     # 当前进程识别到的 agent UUID
+python mw.py agent list                        # 各 agent 的事件/回合数
+python mw.py agent assign --session <前缀> --agent <uuid>
+python mw.py recall "关键词" --agent '*'       # 显式跨 agent（默认隔离）
 ```
 
 Windows 下也可以用 `mw.cmd` 代替 `python mw.py`。
@@ -169,6 +175,28 @@ python mw.py watch-status          # 最近一次心跳
 - 轮询间隔内“写完立刻被重写”仍可能丢一小段；支持 PreCompact 的客户端优先用 hook。
 
 MCP 侧还提供 `sync`（一次性扫描）、`watch_status`、`ingest`（导入指定文件）工具，以及 `memory://brief`、`memory://stats` resources。支持 resources 的客户端可以在会话开始自动读取摘要。
+
+## 按 agent 隔离
+
+默认每个 agent 只能检索和写入自己的记忆。`recall` / `brief` / `timeline` / `lost` / `show` / `stats` / `summarize` / `export` 都会自动加 agent 过滤；只有显式传 `--agent '*'` 才会跨 agent。
+
+- **hooks**：从 Claude Code 进程的 `--add-dir ...\Data\Agents\<uuid>` 解析 agent，并写入 `session_agents` 会话映射。
+- **watcher**：按会话映射给新事件打标；hook 首次看到某个历史会话时，会把该会话之前导入的 `legacy` 事件自动回填给这个 agent。
+- **MCP server**：由桌面应用拉起，无法从进程链识别 agent。注册时**必须**加 `--agent-id <uuid>`，每个 agent 注册自己的 server：
+
+```json
+{
+  "mcpServers": {
+    "memory-warehouse": {
+      "command": "python",
+      "args": ["C:\\path\\to\\mw.py", "mcp", "--agent-id", "<agent-uuid>"]
+    }
+  }
+}
+```
+
+- 升级前的历史数据统一放在 `legacy`，不会自动归给某个 agent。确认归属后用 `agent assign` 迁移；`--session '%'` 可以匹配全部会话（谨慎使用，`--force` 会覆盖已有归属）。
+- 这是**软隔离**：数据仍在同一个 SQLite 文件里，CLI 的 `--agent '*'` 或直接读库仍可跨 agent。它防止的是 agent 默认看到别人的记忆，不是加密或权限边界。
 
 ## 数据与隐私
 
