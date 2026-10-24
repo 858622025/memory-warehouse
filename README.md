@@ -1,4 +1,4 @@
-# Memory Warehouse（v1.3.0）
+# Memory Warehouse（v1.3.1）
 
 把 agent 的对话历史增量落盘到本地 SQLite。上下文被压缩（compact）后，仍然能按关键词或语义找回压缩前说过的话、跑过的命令、改过的文件和当时的结论。
 
@@ -12,6 +12,7 @@
 - **Hooks**：SessionStart / Stop / PreCompact / SessionEnd 自动落盘、压缩前快照、启动注入摘要。
 - **Watcher**：不依赖 hooks 的轮询采集；MCP server 默认在进程内启动，也可以 `mw.py watch` 独立运行。
 - **按 agent 隔离**：默认只检索/写入当前 agent；hooks 自动解析归属，MCP 用 `--agent-id` 显式绑定。
+- **Windows 无窗口 hooks**：Stop / PreCompact / SessionEnd 用 `pythonw.exe` 启动；身份解析调用 wmic / PowerShell 时隐藏窗口，不再闪脚本弹窗。
 - **CLI + MCP**：`recall` / `show` / `timeline` / `remember` / `checkpoint` / `summarize` / `embed` / `sync` / `watch_status` / `ingest` / `stats` / `agent`。
 - **可选 Skill**：让 agent 在"还记得吗 / 上次 / 之前"时主动检索。
 
@@ -220,6 +221,9 @@ python install_hooks.py --uninstall-skill    # 移除 skill
 
 **hooks 没生效？**
 完整重启 Cherry Studio / Claude Code，然后看 `logs/hook.log` 是否有 `stop sync ...`。
+
+**Windows 下 hook 会弹脚本窗口吗？**
+1.3.1 起不会。Stop / PreCompact / SessionEnd 用 `pythonw.exe` 启动；`warehouse/identity.py` 调用 wmic / PowerShell 时使用 `CREATE_NO_WINDOW` + `SW_HIDE`，并用 `data/agent_cache.json` 缓存 agent 身份。如果仍看到弹窗，检查是否还有第三方 hook（例如 jcodemunch 的 `uvx.exe`）。
 
 **中文搜不到？**
 先试更短的关键词、`--since 90d`、`--any`；再对比 `--no-semantic` 和默认结果，判断是关键词问题还是语义模型未覆盖。
